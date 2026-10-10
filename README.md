@@ -162,4 +162,4 @@ See [API Reference](docs/API.md) for endpoint details, request and response form
 - Tool: OpenAI Codex.
 - Used to help scaffold the Spring Boot API, SQLite persistence, simulator, tests, and documentation.
 - I personally modified the database structure to include the correct parameters as specified by the problem statement.
-- I manually verified the SQLite-backed API and exercised the simulator's stop/quit behavior, including observing devices transition offline after the 30-second timeout.
+- I manually verified the SQLite-backed API and exercised the simulator's real PowerShell background jobs, confirming stop/quit cleanup and the 30-second offline transition. The Pester tests mock `Start-Job`, `Stop-Job`, and `Remove-Job` and use in-memory job objects, so tests do not launch real heartbeat worker processes.
