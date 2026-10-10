@@ -6,20 +6,22 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class DeviceService {
     private static final Duration HEARTBEAT_TIMEOUT = Duration.ofSeconds(30);
-    private final ConcurrentHashMap<String, Device> devices = new ConcurrentHashMap<>();
+    private final DeviceRepository deviceRepository;
+
+    public DeviceService(DeviceRepository deviceRepository) {
+        this.deviceRepository = deviceRepository;
+    }
 
     public DeviceResponse register(String id, String name) {
         requireText(id, "id");
         requireText(name, "name");
         Device device = new Device(id.trim(), name.trim(), null, null);
-        if (devices.putIfAbsent(device.id(), device) != null) {
+        if (!deviceRepository.insert(device)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Device already exists: " + device.id());
         }
         return toResponse(device);
@@ -30,27 +32,25 @@ public class DeviceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "timestamp is required");
         }
         requireText(reportedStatus, "status");
-        Device updated = devices.compute(id, (key, current) -> {
-            if (current == null) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found: " + id);
-            }
-            return current.withHeartbeat(timestamp.toString(), reportedStatus.trim());
-        });
+        String heartbeatTime = timestamp.toString();
+        String cleanStatus = reportedStatus.trim();
+        if (!deviceRepository.updateHeartbeat(id, heartbeatTime, cleanStatus)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found: " + id);
+        }
+        Device updated = new Device(id, deviceRepository.findById(id).orElseThrow().name(),
+                heartbeatTime, cleanStatus);
         return toResponse(updated);
     }
 
     public List<DeviceResponse> list() {
-        return devices.values().stream()
-                .sorted(Comparator.comparing(Device::id))
+        return deviceRepository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public DeviceResponse get(String id) {
-        Device device = devices.get(id);
-        if (device == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found: " + id);
-        }
+        Device device = deviceRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found: " + id));
         return toResponse(device);
     }
 
