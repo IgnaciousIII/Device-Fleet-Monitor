@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.web.server.ResponseStatusException;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 
 import java.nio.file.Path;
 import java.time.Instant;
@@ -77,5 +78,50 @@ class DeviceServiceTest {
         deviceService.heartbeat("device-01", Instant.now(), "OK");
 
         assertThat(deviceService.summary()).isEqualTo(new FleetSummary(2, 1, 1));
+    }
+
+    @Test
+    void reportsOfflineUntilARecentHeartbeatArrives() {
+        deviceService.register("device-01", "Lab Device 01");
+        assertThat(deviceService.get("device-01").status()).isEqualTo("OFFLINE");
+
+        deviceService.heartbeat("device-01", Instant.now().minusSeconds(29), "OK");
+        assertThat(deviceService.get("device-01").status()).isEqualTo("ONLINE");
+
+        deviceService.heartbeat("device-01", Instant.now().minusSeconds(31), "OK");
+        assertThat(deviceService.get("device-01").status()).isEqualTo("OFFLINE");
+    }
+
+    @Test
+    void rejectsBlankRegistrationFields() {
+        assertBadRequest(() -> deviceService.register("  ", "Lab Device"));
+        assertBadRequest(() -> deviceService.register("device-01", "  "));
+    }
+
+    @Test
+    void rejectsMissingHeartbeatFieldsAndUnknownDevices() {
+        assertBadRequest(() -> deviceService.heartbeat("device-01", null, "OK"));
+        assertBadRequest(() -> deviceService.heartbeat("device-01", Instant.now(), " "));
+        assertThatThrownBy(() -> deviceService.heartbeat("missing", Instant.now(), "OK"))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void listsDevicesInIdOrderAndSummarizesAnEmptyFleet() {
+        assertThat(deviceService.summary()).isEqualTo(new FleetSummary(0, 0, 0));
+        deviceService.register("device-02", "Second");
+        deviceService.register("device-01", "First");
+
+        assertThat(deviceService.list()).extracting(DeviceResponse::id)
+                .containsExactly("device-01", "device-02");
+    }
+
+    private void assertBadRequest(ThrowingCallable action) {
+        assertThatThrownBy(action)
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 }
