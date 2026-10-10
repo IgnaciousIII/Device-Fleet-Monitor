@@ -31,6 +31,9 @@ Describe 'Fleet simulator startup checks' {
     It 'stops and restarts only the selected device when the API is available' {
         $global:fleetSimulatorCommands = New-Object System.Collections.Queue
         $global:fleetSimulatorRequestCount = 0
+        $global:fleetSimulatorJobCount = 0
+        $global:fleetSimulatorStopCount = 0
+        $global:fleetSimulatorRemoveCount = 0
         @('stop device-03', 'start device-03', 'quit') | ForEach-Object {
             $global:fleetSimulatorCommands.Enqueue($_)
         }
@@ -39,18 +42,33 @@ Describe 'Fleet simulator startup checks' {
             $global:fleetSimulatorRequestCount++
             @()
         }
+        Mock Start-Job {
+            $global:fleetSimulatorJobCount++
+            [pscustomobject]@{ Name = $Name; Id = $global:fleetSimulatorJobCount }
+        }
+        Mock Stop-Job { $global:fleetSimulatorStopCount++ }
+        Mock Remove-Job { $global:fleetSimulatorRemoveCount++ }
         Mock Read-Host { $global:fleetSimulatorCommands.Dequeue() }
 
         & $simulatorPath
 
         $global:fleetSimulatorRequestCount | Should Be 13
+        $global:fleetSimulatorJobCount | Should Be 6
+        $global:fleetSimulatorStopCount | Should Be 6
+        $global:fleetSimulatorRemoveCount | Should Be 6
         Remove-Variable fleetSimulatorCommands -Scope Global -ErrorAction SilentlyContinue
         Remove-Variable fleetSimulatorRequestCount -Scope Global -ErrorAction SilentlyContinue
+        Remove-Variable fleetSimulatorJobCount -Scope Global -ErrorAction SilentlyContinue
+        Remove-Variable fleetSimulatorStopCount -Scope Global -ErrorAction SilentlyContinue
+        Remove-Variable fleetSimulatorRemoveCount -Scope Global -ErrorAction SilentlyContinue
     }
 
     It 'does not start a device worker when the API goes down before restart' {
         $global:fleetSimulatorCommands = New-Object System.Collections.Queue
         $global:fleetSimulatorRequestCount = 0
+        $global:fleetSimulatorJobCount = 0
+        $global:fleetSimulatorStopCount = 0
+        $global:fleetSimulatorRemoveCount = 0
         @('stop device-03', 'start device-03', 'quit') | ForEach-Object {
             $global:fleetSimulatorCommands.Enqueue($_)
         }
@@ -63,6 +81,12 @@ Describe 'Fleet simulator startup checks' {
             }
             @()
         }
+        Mock Start-Job {
+            $global:fleetSimulatorJobCount++
+            [pscustomobject]@{ Name = $Name; Id = $global:fleetSimulatorJobCount }
+        }
+        Mock Stop-Job { $global:fleetSimulatorStopCount++ }
+        Mock Remove-Job { $global:fleetSimulatorRemoveCount++ }
         Mock Read-Host {
             $nextCommand = $global:fleetSimulatorCommands.Dequeue()
             if ($nextCommand -eq 'start device-03') {
@@ -74,8 +98,14 @@ Describe 'Fleet simulator startup checks' {
         & $simulatorPath
 
         $global:fleetSimulatorRequestCount | Should Be 12
+        $global:fleetSimulatorJobCount | Should Be 5
+        $global:fleetSimulatorStopCount | Should Be 5
+        $global:fleetSimulatorRemoveCount | Should Be 5
         Remove-Variable fleetSimulatorCommands -Scope Global -ErrorAction SilentlyContinue
         Remove-Variable fleetSimulatorRequestCount -Scope Global -ErrorAction SilentlyContinue
+        Remove-Variable fleetSimulatorJobCount -Scope Global -ErrorAction SilentlyContinue
+        Remove-Variable fleetSimulatorStopCount -Scope Global -ErrorAction SilentlyContinue
+        Remove-Variable fleetSimulatorRemoveCount -Scope Global -ErrorAction SilentlyContinue
         Remove-Variable fleetSimulatorAvailable -Scope Global -ErrorAction SilentlyContinue
     }
 }

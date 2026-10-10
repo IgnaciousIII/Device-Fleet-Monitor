@@ -98,48 +98,52 @@ function Stop-DeviceHeartbeat {
         return
     }
 
-    Stop-Job -Job $jobs[$DeviceId]
-    Remove-Job -Job $jobs[$DeviceId] -Force
+    $jobId = $jobs[$DeviceId].Id
+    Stop-Job -Id $jobId -ErrorAction SilentlyContinue
+    Remove-Job -Id $jobId -Force -ErrorAction SilentlyContinue
     $jobs.Remove($DeviceId)
     Write-Host "Stopped $DeviceId. It will report OFFLINE after 30 seconds without a heartbeat."
 }
 
-foreach ($deviceId in $devices.Keys) {
-    Start-DeviceHeartbeat -DeviceId $deviceId
-}
-
-Write-Host "Heartbeats are sent every $IntervalSeconds seconds to $ApiUrl."
-Write-Host 'Commands: stop device-03 | start device-03 | status | quit'
-
-while ($true) {
-    $command = (Read-Host 'simulator').Trim()
-
-    if ($command -match '^quit$') {
-        break
+try {
+    foreach ($deviceId in $devices.Keys) {
+        Start-DeviceHeartbeat -DeviceId $deviceId
     }
-    elseif ($command -match '^status$') {
-        foreach ($deviceId in ($devices.Keys | Sort-Object)) {
-            $state = if ($jobs.ContainsKey($deviceId)) { 'running' } else { 'stopped' }
-            Write-Host "$deviceId : $state"
+
+    Write-Host "Heartbeats are sent every $IntervalSeconds seconds to $ApiUrl."
+    Write-Host 'Commands: stop device-03 | start device-03 | status | quit'
+
+    while ($true) {
+        $command = (Read-Host 'simulator').Trim()
+
+        if ($command -match '^quit$') {
+            break
         }
-    }
-    elseif ($command -match '^stop\s+(device-0[1-5])$') {
-        Stop-DeviceHeartbeat -DeviceId $Matches[1]
-    }
-    elseif ($command -match '^start\s+(device-0[1-5])$') {
-        $deviceId = $Matches[1]
-        if ($jobs.ContainsKey($deviceId)) {
-            Write-Host "$deviceId is already running."
+        elseif ($command -match '^status$') {
+            foreach ($deviceId in ($devices.Keys | Sort-Object)) {
+                $state = if ($jobs.ContainsKey($deviceId)) { 'running' } else { 'stopped' }
+                Write-Host "$deviceId : $state"
+            }
+        }
+        elseif ($command -match '^stop\s+(device-0[1-5])$') {
+            Stop-DeviceHeartbeat -DeviceId $Matches[1]
+        }
+        elseif ($command -match '^start\s+(device-0[1-5])$') {
+            $deviceId = $Matches[1]
+            if ($jobs.ContainsKey($deviceId)) {
+                Write-Host "$deviceId is already running."
+            }
+            else {
+                Start-DeviceHeartbeat -DeviceId $deviceId
+            }
         }
         else {
-            Start-DeviceHeartbeat -DeviceId $deviceId
+            Write-Host 'Use: stop device-03, start device-03, status, or quit.'
         }
     }
-    else {
-        Write-Host 'Use: stop device-03, start device-03, status, or quit.'
-    }
 }
-
-foreach ($deviceId in @($jobs.Keys)) {
-    Stop-DeviceHeartbeat -DeviceId $deviceId
+finally {
+    foreach ($deviceId in @($jobs.Keys)) {
+        Stop-DeviceHeartbeat -DeviceId $deviceId
+    }
 }
