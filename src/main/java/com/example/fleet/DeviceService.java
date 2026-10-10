@@ -31,6 +31,9 @@ public class DeviceService {
         if (timestamp == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "timestamp is required");
         }
+        if (timestamp.isAfter(Instant.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "timestamp must not be in the future");
+        }
         requireText(reportedStatus, "status");
         String heartbeatTime = timestamp.toString();
         String cleanStatus = reportedStatus.trim();

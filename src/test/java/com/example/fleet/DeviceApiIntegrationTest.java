@@ -69,12 +69,24 @@ class DeviceApiIntegrationTest {
         assertThat(send("POST", "/devices", registration).statusCode()).isEqualTo(409);
         assertThat(send("POST", "/devices", "{\"id\":\" \",\"name\":\"Name\"}").statusCode())
                 .isEqualTo(400);
+        assertThat(send("POST", "/devices", "{\"id\":\"device-02\"}").statusCode())
+                .isEqualTo(400);
+        assertThat(send("POST", "/devices", "{\"id\":\"device-02\",\"name\":\" \"}").statusCode())
+                .isEqualTo(400);
         assertThat(send("GET", "/devices/missing", null).statusCode()).isEqualTo(404);
         assertThat(send("POST", "/devices/missing/heartbeat",
                 "{\"timestamp\":\"" + Instant.now() + "\",\"status\":\"OK\"}").statusCode())
                 .isEqualTo(404);
         assertThat(send("POST", "/devices/device-01/heartbeat", "{\"status\":\"OK\"}").statusCode())
                 .isEqualTo(400);
+        assertThat(send("POST", "/devices/device-01/heartbeat",
+                "{\"timestamp\":\"" + Instant.now() + "\"}").statusCode()).isEqualTo(400);
+        assertThat(send("POST", "/devices/device-01/heartbeat",
+                "{\"timestamp\":\"" + Instant.now() + "\",\"status\":\" \"}").statusCode())
+                .isEqualTo(400);
+        assertThat(send("POST", "/devices/device-01/heartbeat",
+                "{\"timestamp\":\"" + Instant.now().plusSeconds(60) + "\",\"status\":\"OK\"}")
+                .statusCode()).isEqualTo(400);
     }
 
     private HttpResponse<String> send(String method, String path, String jsonBody) throws Exception {

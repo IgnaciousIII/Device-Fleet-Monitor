@@ -72,6 +72,21 @@ class DeviceServiceTest {
     }
 
     @Test
+    void laterHeartbeatReplacesThePreviouslyStoredHeartbeatAndReportedStatus() {
+        deviceService.register("device-01", "Lab Device 01");
+        Instant firstTimestamp = Instant.now().minusSeconds(5);
+        Instant secondTimestamp = Instant.now();
+
+        deviceService.heartbeat("device-01", firstTimestamp, "OK");
+        DeviceResponse updated = deviceService.heartbeat("device-01", secondTimestamp, "  DEGRADED  ");
+
+        assertThat(updated.lastHeartbeat()).isEqualTo(secondTimestamp.toString());
+        assertThat(updated.lastReportedStatus()).isEqualTo("DEGRADED");
+        assertThat(updated.status()).isEqualTo("ONLINE");
+        assertThat(deviceService.get("device-01").lastReportedStatus()).isEqualTo("DEGRADED");
+    }
+
+    @Test
     void summarizesOnlineAndOfflineDevices() {
         deviceService.register("device-01", "Online device");
         deviceService.register("device-02", "Offline device");
@@ -102,7 +117,16 @@ class DeviceServiceTest {
     void rejectsMissingHeartbeatFieldsAndUnknownDevices() {
         assertBadRequest(() -> deviceService.heartbeat("device-01", null, "OK"));
         assertBadRequest(() -> deviceService.heartbeat("device-01", Instant.now(), " "));
+        assertBadRequest(() -> deviceService.heartbeat("device-01", Instant.now().plusSeconds(1), "OK"));
         assertThatThrownBy(() -> deviceService.heartbeat("missing", Instant.now(), "OK"))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void returnsNotFoundWhenGettingAnUnknownDevice() {
+        assertThatThrownBy(() -> deviceService.get("missing"))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
