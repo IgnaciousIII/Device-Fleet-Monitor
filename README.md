@@ -1,6 +1,6 @@
 # Device Fleet Monitor API
 
-A small Spring Boot REST API for registering devices, receiving heartbeats, and reporting current fleet connectivity. Device records are stored in a local SQLite database. A PowerShell simulator can run five devices and lets you stop and restart an individual device.
+A small Spring Boot application for registering devices, receiving heartbeats, and monitoring current fleet connectivity through a REST API and a browser dashboard. Device records are stored in a local SQLite database. A PowerShell simulator can run five devices and lets you stop and restart an individual device.
 
 ## What it does
 
@@ -8,6 +8,7 @@ A small Spring Boot REST API for registering devices, receiving heartbeats, and 
 - Accepts a timestamped heartbeat and a device-reported status.
 - Reports a device as `ONLINE` when its latest heartbeat is no more than 30 seconds old. Devices with no heartbeat or an older heartbeat are `OFFLINE`.
 - Lists devices, returns one device's details, and summarizes online and offline counts.
+- Serves a dashboard with fleet counts, device status, heartbeat age, device registration, search, and status filtering.
 - Persists devices and their latest heartbeat in `fleet.db` in the project directory.
 
 Connectivity (`status`) is calculated by the API. The device's submitted status is returned separately as `lastReportedStatus` (for example, `OK`). Send a current UTC timestamp; an old timestamp can make the device offline immediately, and future timestamps are rejected.
@@ -43,7 +44,11 @@ Open PowerShell in the project directory (the directory containing `mvnw.ps1` an
 .\mvnw.ps1 spring-boot:run
 ```
 
-The API starts at `http://localhost:8080`. Keep this terminal open while using the API. Stop the application with `Ctrl+C`.
+The API starts at `http://localhost:8080`; open that address in a browser for the dashboard. Keep this terminal open while using the dashboard or API. Stop the application with `Ctrl+C`.
+
+## Dashboard
+
+The dashboard refreshes the device list and fleet summary every five seconds. It displays each device's calculated connectivity, last reported status, and how long ago its most recent heartbeat was received. It provides browser views and controls for device registration, the fleet list, per-device information, and the summary. Per-device rows are populated from `GET /devices`; `GET /devices/{id}` is also available as a direct API call. The dashboard does not send heartbeats. A device or simulator should normally send them; for manual use, call `POST /devices/{id}/heartbeat` directly as shown below.
 
 To run the packaged application after building:
 
@@ -125,7 +130,7 @@ Run the Java unit and API integration tests from the project directory:
 .\mvnw.ps1 test
 ```
 
-They use a separate SQLite database under `target` and cover registration and persistence, duplicate and invalid requests, heartbeat updates, online/offline status, device lookup, list ordering, and fleet summary. The suite currently contains 12 Java tests.
+They use a separate SQLite database under `target` and cover registration and persistence, duplicate and invalid requests, structured error responses, heartbeat updates, online/offline status, device lookup, list ordering, and fleet summary. The suite currently contains 13 Java tests.
 
 The PowerShell simulator tests use Pester. If Pester is installed, run:
 
@@ -141,16 +146,20 @@ These check script syntax and startup checks, along with stopping/restarting a s
 - Heartbeat timestamps use ISO-8601 and are provided by the device. The API rejects future timestamps.
 - A device-reported status such as `OK` is informational; connectivity is determined only by heartbeat age.
 - SQLite is intended for this single-instance local application. The database file is ignored by Git and created locally on startup.
-- The API has no authentication, UI, filtering, or API documentation interface.
+- The application has no authentication or generated OpenAPI/Swagger page. The dashboard is served by the same Spring Boot process as the API.
 - The simulator is a Windows PowerShell script and requires the API to be running.
 
 ## What I would improve with one additional day
 
-I would make the SQLite path and timeout configurable and add consistent structured error responses. Persistence and basic input validation are already implemented. These reliability and setup improvements would be more useful for this project than adding a UI.
+I would add a dashboard control for sending a heartbeat with a selected device status. I would also make the SQLite path and heartbeat timeout configurable and add pagination for larger fleets.
+
+## API documentation
+
+See [API Reference](docs/API.md) for endpoint details, request and response formats, and HTTP status codes.
 
 ## AI Usage
 
 - Tool: OpenAI Codex.
 - Used to help scaffold the Spring Boot API, SQLite persistence, simulator, tests, and documentation.
-- The simulator cleanup was refined so `quit` stops and removes each heartbeat worker; its tests mock the worker jobs to avoid launching real background processes during test runs.
+- I personally modified the database structure to include the correct parameters as specified by the problem statement.
 - I manually verified the SQLite-backed API and exercised the simulator's stop/quit behavior, including observing devices transition offline after the 30-second timeout.

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f6f8">
+  <title>Campus Fleet Monitor</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Campus Fleet Monitor home">
+      <span class="brand-mark" aria-hidden="true">F</span>
+      <span>Campus <strong>Fleet</strong></span>
+    </a>
+    <div class="connection" aria-live="polite">
+      <span id="connection-dot" class="connection-dot" aria-hidden="true"></span>
+      <span id="connection-label">Connecting to API</span>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="page-heading">
+      <div>
+        <p class="eyebrow">OPERATIONS</p>
+        <h1>Device fleet</h1>
+        <p class="page-description">Monitor device connectivity and the latest heartbeat received.</p>
+      </div>
+      <div class="refresh-note">
+        <span class="pulse-dot" aria-hidden="true"></span>
+        Refreshes every 5 seconds
+      </div>
+    </section>
+
+    <div id="alert" class="alert" role="alert" hidden></div>
+
+    <section class="summary-grid" aria-label="Fleet summary">
+      <article class="summary-card">
+        <div class="summary-label"><span class="summary-icon icon-total" aria-hidden="true">▦</span>Total devices</div>
+        <p id="total-count" class="summary-value">—</p>
+        <p class="summary-caption">Registered in this fleet</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-label"><span class="summary-icon icon-online" aria-hidden="true">↗</span>Online</div>
+        <p id="online-count" class="summary-value">—</p>
+        <p class="summary-caption">Heartbeat within 30 seconds</p>
+      </article>
+      <article class="summary-card">
+        <div class="summary-label"><span class="summary-icon icon-offline" aria-hidden="true">↘</span>Offline</div>
+        <p id="offline-count" class="summary-value">—</p>
+        <p class="summary-caption">No recent heartbeat</p>
+      </article>
+    </section>
+
+    <section class="panel fleet-panel" aria-labelledby="fleet-heading">
+      <div class="panel-heading fleet-heading-row">
+        <div>
+          <h2 id="fleet-heading">Devices</h2>
+          <p class="panel-subtitle">Status is calculated from each device's latest heartbeat.</p>
+        </div>
+        <div class="table-controls">
+          <label class="visually-hidden" for="search-devices">Search devices</label>
+          <input id="search-devices" class="search-input" type="search" placeholder="Search devices" autocomplete="off">
+          <label class="visually-hidden" for="status-filter">Filter by status</label>
+          <select id="status-filter" class="filter-select">
+            <option value="ALL">All statuses</option>
+            <option value="ONLINE">Online</option>
+            <option value="OFFLINE">Offline</option>
+          </select>
+          <button id="refresh-button" class="button button-secondary" type="button">Refresh</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Device</th>
+              <th scope="col">Connectivity</th>
+              <th scope="col">Reported status</th>
+              <th scope="col">Last heartbeat</th>
+            </tr>
+          </thead>
+          <tbody id="device-rows"></tbody>
+        </table>
+        <div id="table-message" class="table-message" role="status">Loading devices…</div>
+      </div>
+      <div class="panel-footer"><span id="last-updated">Waiting for API</span><span>Offline after 30 seconds without a heartbeat</span></div>
+    </section>
+
+    <section class="panel register-panel" aria-labelledby="register-heading">
+      <div class="panel-heading">
+        <div>
+          <h2 id="register-heading">Register a device</h2>
+          <p class="panel-subtitle">Add a device to the fleet. The device starts offline until it sends a heartbeat.</p>
+        </div>
+      </div>
+      <form id="register-form" class="register-form">
+        <div class="form-field">
+          <label for="device-id">Device ID</label>
+          <input id="device-id" name="id" type="text" placeholder="e.g. device-06" required maxlength="100">
+        </div>
+        <div class="form-field">
+          <label for="device-name">Device name</label>
+          <input id="device-name" name="name" type="text" placeholder="e.g. Physics Lab Sensor" required maxlength="200">
+        </div>
+        <button id="register-button" class="button button-primary" type="submit">Register device <span aria-hidden="true">＋</span></button>
+      </form>
+      <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+    </section>
+
+    <footer class="page-footer">Heartbeat age updates with the fleet refresh. This dashboard displays device heartbeats; it does not send them.</footer>
+  </main>
+</body>
+</html>

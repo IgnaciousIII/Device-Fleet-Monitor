@@ -89,6 +89,24 @@ class DeviceApiIntegrationTest {
                 .statusCode()).isEqualTo(400);
     }
 
+    @Test
+    void returnsStructuredErrorsForApiAndJsonParsingFailures() throws Exception {
+        String registration = "{\"id\":\"device-01\",\"name\":\"Lab Device 01\"}";
+        send("POST", "/devices", registration);
+
+        HttpResponse<String> duplicate = send("POST", "/devices", registration);
+        assertThat(duplicate.statusCode()).isEqualTo(409);
+        assertThat(duplicate.body()).contains("\"timestamp\":", "\"status\":409",
+                "\"error\":\"Conflict\"", "\"message\":\"Device already exists: device-01\"",
+                "\"path\":\"/devices\"");
+
+        HttpResponse<String> malformedJson = send("POST", "/devices", "{not-json");
+        assertThat(malformedJson.statusCode()).isEqualTo(400);
+        assertThat(malformedJson.body()).contains("\"status\":400", "\"error\":\"Bad Request\"",
+                "\"message\":\"Request body is missing or contains invalid JSON.\"",
+                "\"path\":\"/devices\"");
+    }
+
     private HttpResponse<String> send(String method, String path, String jsonBody) throws Exception {
         HttpRequest.Builder request = HttpRequest.newBuilder()
                 .uri(URI.create("http://localhost:" + port + path));
